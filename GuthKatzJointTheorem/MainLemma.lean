@@ -3,6 +3,7 @@ import Mathlib.Analysis.SpecialFunctions.Pow.Real
 import GuthKatzJointTheorem.Geometry
 import GuthKatzJointTheorem.Algebra
 
+open Classical
 -- The core contradiction: At least one line must have relatively few joints.
 theorem exists_sparse_line (L : Finset Line3) (hL : L.Nonempty) (hJ : (Joints L).Nonempty) :
     ∃ l ∈ L, ((Joints L).filter (fun p => l.contains p)).card ≤ 3 * ((Joints L).card : ℝ) ^ (1/3 : ℝ) := by

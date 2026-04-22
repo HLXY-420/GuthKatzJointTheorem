@@ -1,4 +1,5 @@
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
+
 import GuthKatzJointTheorem.Geometry
 import GuthKatzJointTheorem.Algebra
 import GuthKatzJointTheorem.MainLemma
