@@ -3,7 +3,6 @@ import Mathlib.Data.Finset.Basic
 import Mathlib.Algebra.Module.Pi
 import Mathlib.LinearAlgebra.LinearIndependent.Basic
 import Mathlib.Data.Part
-
 -- Open classical scope to allow using decidable propositions in noncomputable definitions
 open scoped Classical
 
@@ -36,4 +35,8 @@ def IsJoint (p : Point3) (L : Finset Line3) : Prop :=
 -- The finite set of all joints.
 -- Marked noncomputable because finding intersections over ℝ requires classical logic.
 noncomputable def Joints (L : Finset Line3) : Finset Point3 :=
-  sorry
+  Finset.filter (fun p => IsJoint p L) <|
+    Finset.biUnion (L ×ˢ L) <| fun ⟨l₁, l₂⟩ =>
+      if h : ∃ p, l₁.contains p ∧ l₂.contains p ∧ l₁ ≠ l₂
+      then ({Classical.choose h} : Finset Point3)
+      else (∅ : Finset Point3)
