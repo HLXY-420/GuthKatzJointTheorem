@@ -18,15 +18,20 @@ noncomputable def PDeriv3 (P : PolyR3) (i : Fin 3) : PolyR3 :=
   MvPolynomial.pderiv i P
 
 -- Lemmas for Lemma 1
-lemma poly_bound_exists (S : Finset Point3) :
-    ∃ d : ℕ, (d : ℝ) ≤ 3 * (S.card : ℝ) ^ (1/3 : ℝ) := by
-    use 0
-    simp only [CharP.cast_eq_zero, one_div, Nat.ofNat_pos, mul_nonneg_iff_of_pos_left]
-    positivity
 
-lemma poly_vanishing_exists (S : Finset Point3) (d : ℕ) :
+-- Parameter counting: if the number of monomials of degree ≤ d in 3 variables
+-- exceeds |S|, there exists a nonzero polynomial of degree ≤ d vanishing on S.
+-- The dimension of the space of polynomials of degree ≤ d in 3 variables is C(d+3,3).
+lemma poly_vanishing_exists (S : Finset Point3) (d : ℕ)
+    (h_param : S.card < Nat.choose (d + 3) 3) :
     ∃ P : PolyR3, P ≠ 0 ∧ (∀ p ∈ S, evalP P p = 0)
      ∧ (MvPolynomial.totalDegree P : ℝ) ≤ (d : ℝ) := sorry
+
+-- The parameter counting condition is satisfiable at the cube-root scale:
+-- there exists d ≤ 3 * |S|^(1/3) with C(d+3,3) > |S|.
+lemma param_count_at_cube_root (S : Finset Point3) (hS : S.Nonempty) :
+    ∃ d : ℕ, (d : ℝ) ≤ 3 * (S.card : ℝ) ^ (1/3 : ℝ)
+    ∧ S.card < Nat.choose (d + 3) 3 := sorry
 
 lemma min_degree_poly_exists (S : Finset Point3) (P : PolyR3) (hP_neq : P ≠ 0)
     (hP_vanish : ∀ p ∈ S, evalP P p = 0) :
@@ -43,18 +48,15 @@ theorem exists_min_degree_poly (S : Finset Point3) (hS : S.Nonempty) :
     ((MvPolynomial.totalDegree P : ℝ) ≤ 3 * (S.card : ℝ) ^ (1/3 : ℝ)) ∧
     (∀ Q : PolyR3, Q ≠ 0 → (∀ p ∈ S, evalP Q p = 0) →
       MvPolynomial.totalDegree P ≤ MvPolynomial.totalDegree Q) := by
-  have h_bound : ∃ d : ℕ, (d : ℝ) ≤ 3 * (S.card : ℝ) ^ (1/3 : ℝ) := poly_bound_exists S
-  rcases h_bound with ⟨d, hd⟩
-  have h_exists : ∃ P : PolyR3, P ≠ 0 ∧ (∀ p ∈ S, evalP P p = 0) ∧
-    (MvPolynomial.totalDegree P : ℝ) ≤ (d : ℝ) := poly_vanishing_exists S d
-  rcases h_exists with ⟨P, hP_neq, hP_vanish, hP_deg⟩
-  have h_min : ∃ P_min : PolyR3, P_min ≠ 0 ∧ (∀ p ∈ S, evalP P_min p = 0) ∧
-    (∀ Q : PolyR3, Q ≠ 0 → (∀ p ∈ S, evalP Q p = 0) →
-      MvPolynomial.totalDegree P_min ≤ MvPolynomial.totalDegree Q) :=
-        min_degree_poly_exists S P hP_neq hP_vanish
-  rcases h_min with ⟨P_min, hP_min_neq, hP_min_vanish, hP_min_deg⟩
+  -- Obtain d with the degree bound and parameter counting condition
+  rcases param_count_at_cube_root S hS with ⟨d, hd, h_param⟩
+  -- Use parameter counting to get a nonzero vanishing polynomial of degree ≤ d
+  rcases poly_vanishing_exists S d h_param with ⟨P, hP_neq, hP_vanish, hP_deg⟩
+  -- Extract the minimal-degree polynomial among all vanishing polynomials
+  rcases min_degree_poly_exists S P hP_neq hP_vanish with ⟨P_min, hP_min_neq, hP_min_vanish, hP_min_deg⟩
   use P_min
   refine ⟨hP_min_neq, hP_min_vanish, ?_, hP_min_deg⟩
+  -- The minimal polynomial has degree ≤ deg(P) ≤ d ≤ 3 * |S|^(1/3)
   have h_P_min_le_P : (MvPolynomial.totalDegree P_min : ℝ) ≤ (MvPolynomial.totalDegree P : ℝ) := by
     exact_mod_cast hP_min_deg P hP_neq hP_vanish
   linarith
