@@ -3,11 +3,16 @@ import Mathlib.Analysis.SpecialFunctions.Pow.Real
 import GuthKatzJointTheorem.Geometry
 import GuthKatzJointTheorem.Algebra
 
+set_option linter.style.openClassical false
+
 open Classical
+
+-- Fact: the degree of a partial derivative is strictly less than the degree of the polynomial.
 lemma pderiv_degree_lt (P : PolyR3) (i : Fin 3) (hP : PDeriv3 P i ≠ 0) :
     MvPolynomial.totalDegree (PDeriv3 P i) < MvPolynomial.totalDegree P := by
     sorry
 
+-- Fact: if all partial derivatives of a polynomial are zero, then the polynomial is a constant.
 lemma pderiv_zero_implies_const (P : PolyR3) (h : ∀ i : Fin 3, PDeriv3 P i = 0) :
     ∃ c : ℝ, P = MvPolynomial.C c := by
     sorry

@@ -5,6 +5,8 @@ import GuthKatzJointTheorem.Algebra
 import GuthKatzJointTheorem.MainLemma
 import Mathlib.Data.Num.Lemmas
 
+set_option linter.style.openClassical false
+
 open Classical
 
 /-!
@@ -15,11 +17,13 @@ so that the **structure** of the two main proofs is fully explicit.
 -/
 
 -- Joints is monotone: removing lines can only lose joints
+-- I think this can be proven by just a few lines of calculation.
 lemma joints_mono_erase (L : Finset Line3) (l₀ : Line3) :
     Joints (L.erase l₀) ⊆ Joints L := sorry
 
 -- The number of joints on a single line is bounded by the sparse-line certificate
 -- (this is the "telescoping" step:  |Joints L \ Joints (L \ {l₀})| ≤ sparse bound)
+-- I think this can be proven by just a few lines of calculation.
 lemma joints_diff_le_sparse (L : Finset Line3) (l₀ : Line3) (hl₀ : l₀ ∈ L)
     (h_sparse : ((Joints L).filter (fun p => l₀.contains p)).card
         ≤ 3 * ((Joints L).card : ℝ) ^ (1 / 3 : ℝ)) :
@@ -147,11 +151,13 @@ The key algebraic steps are:
 -/
 
 -- Division by J^(1/3):  J ≤ a * J^(1/3) implies J^(2/3) ≤ a  when J > 0
+-- I think this can be proven by just a few lines of calculation.
 lemma rpow_div_bound {J a : ℝ} (hJ_pos : 0 < J)
     (h : J ≤ a * J ^ (1 / 3 : ℝ)) :
     J ^ (2 / 3 : ℝ) ≤ a := sorry
 
 -- Raising to the 3/2 power:  J^(2/3) ≤ a  implies J ≤ a^(3/2)  when J > 0 and a ≥ 0
+-- I think this can be proven by just a few lines of calculation.
 lemma rpow_raise_bound {J a : ℝ} (hJ_pos : 0 < J) (ha : 0 ≤ a)
     (h : J ^ (2 / 3 : ℝ) ≤ a) :
     J ≤ a ^ (3 / 2 : ℝ) := sorry
