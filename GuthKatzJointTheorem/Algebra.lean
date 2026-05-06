@@ -6,6 +6,7 @@ import Mathlib.Algebra.Module.Submodule.Lattice
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
 import Mathlib.Data.Fintype.Basic
 import Mathlib.Data.Finsupp.Multiset
+import Mathlib.LinearAlgebra.Basis.Basic
 import Mathlib.LinearAlgebra.Lagrange
 import Mathlib.LinearAlgebra.Dimension.Finite
 import Mathlib.LinearAlgebra.FiniteDimensional.Lemmas
@@ -433,13 +434,59 @@ theorem poly_vanishes_on_line (P : PolyR3) (l : Line3) (S : Finset Point3)
 -- vanishes; only the directional derivative along the line vanishes). The correct
 -- decomposition uses directional derivatives and linear independence.
 
--- If P vanishes identically on line l, then at every point p on l,
--- the directional derivative ∇P(p) · l.dir = 0.
--- Proof sketch: P(l.base + t * l.dir) = 0 for all t, so d/dt of this is 0,
--- which equals ∑_i (∂P/∂x_i)(p) * l.dir_i by the chain rule.
+lemma evalPLine_derivative (P : PolyR3) (l : Line3) :
+    Polynomial.derivative (evalPLine P l) =
+    ∑ i : Fin 3, Polynomial.C (l.dir i) * evalPLine (PDeriv3 P i) l := by
+  unfold evalPLine PDeriv3
+  induction P using MvPolynomial.induction_on
+  case C r =>
+    simp only [MvPolynomial.eval₂_C, Polynomial.derivative_C, MvPolynomial.pderiv_C,
+      MvPolynomial.eval₂_zero, mul_zero, Finset.sum_const_zero]
+  case add P Q hP hQ =>
+    simp only [MvPolynomial.eval₂_add, map_add, hP, hQ, Finset.sum_add_distrib, mul_add]
+  case mul_X P i hP =>
+    simp only [MvPolynomial.eval₂_mul, MvPolynomial.eval₂_X, MvPolynomial.pderiv_mul,
+      MvPolynomial.pderiv_X, MvPolynomial.eval₂_add]
+    rw [Polynomial.derivative_mul, hP]
+    simp only [Polynomial.derivative_add, Polynomial.derivative_C, Polynomial.derivative_X,
+      Polynomial.derivative_mul, mul_add, Finset.sum_mul, mul_assoc, zero_add, add_zero,
+      mul_zero]
+    simp only [Finset.sum_add_distrib]
+    rw [add_comm]
+    congr 1
+    · rw [Finset.sum_eq_single i]
+      · simp
+        ring_nf
+        sorry
+      · intro j _ hne
+        simp
+        ring_nf
+        sorry
+      · intro hi; simp at hi
+    · rw [← Finset.sum_add_distrib]
+      apply Finset.sum_congr rfl
+      intro j _
+      ring_nf
+      sorry
+
+
 lemma dir_deriv_vanishes_on_line (P : PolyR3) (l : Line3) (p : Point3)
     (h_vanish : evalPLine P l = 0) (hp : l.contains p) :
-    ∑ i : Fin 3, l.dir i * evalP (PDeriv3 P i) p = 0 := by sorry
+    ∑ i : Fin 3, l.dir i * evalP (PDeriv3 P i) p = 0 := by
+  have h_deriv_zero : Polynomial.derivative (evalPLine P l) = 0 := by
+    rw [h_vanish, Polynomial.derivative_zero]
+  rw [evalPLine_derivative P l] at h_deriv_zero
+  rcases hp with ⟨t0, rfl⟩
+  have h_eval := congr_arg (Polynomial.eval t0) h_deriv_zero
+  simp only [Polynomial.eval_zero] at h_eval
+  have h_compat : ∀ i, (evalPLine (PDeriv3 P i) l).eval t0 =
+      evalP (PDeriv3 P i) (l.base + t0 • l.dir) := by
+    intro i
+    exact evalPLine_eval_eq (PDeriv3 P i) l t0
+  simp_rw [← h_compat]
+  sorry
+
+
 
 -- If the dot product of the gradient with 3 linearly independent direction
 -- vectors is zero at a point, then the gradient is zero at that point.
@@ -450,7 +497,30 @@ lemma gradient_zero_of_indep_dot_zero (w : Fin 3 → ℝ)
     (h_dot1 : ∑ i : Fin 3, v1 i * w i = 0)
     (h_dot2 : ∑ i : Fin 3, v2 i * w i = 0)
     (h_dot3 : ∑ i : Fin 3, v3 i * w i = 0) :
-    ∀ i : Fin 3, w i = 0 := by sorry
+    ∀ i : Fin 3, w i = 0 := by
+  let v : Fin 3 → Point3 := ![v1, v2, v3]
+  let b := basisOfLinearIndependentOfCardEqFinrank h_indep (by simp)
+  have hb : ∀ i, b i = v i := by
+    intro i; simp [b]; rfl
+  let f : (Fin 3 → ℝ) →ₗ[ℝ] ℝ := {
+    toFun := fun x ↦ ∑ j, x j * w j
+    map_add' := by intro x y; simp [Finset.sum_add_distrib, add_mul]
+    map_smul' := by intro r x; simp [Finset.mul_sum, mul_assoc]
+  }
+  have hf_zero : ∀ i, f (b i) = 0 := by
+    intro i
+    rw [hb]
+    fin_cases i
+    · exact h_dot1
+    · exact h_dot2
+    · exact h_dot3
+  have hf : f = 0 := b.ext hf_zero
+  intro i
+  have hi : f (Pi.single i 1) = 0 := by rw [hf]; rfl
+  simp only [LinearMap.coe_mk, AddHom.coe_mk, Pi.single_apply, ite_mul, one_mul, zero_mul,
+    Finset.sum_ite_eq', Finset.mem_univ, ↓reduceIte, f] at hi
+  exact hi
+
 
 -- Lemma 3: Gradient vanishing at a joint
 theorem gradient_zero_at_joint (P : PolyR3) (p : Point3) (L : Finset Line3)
