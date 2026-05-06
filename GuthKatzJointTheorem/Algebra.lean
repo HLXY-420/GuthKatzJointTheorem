@@ -361,16 +361,38 @@ lemma poly_vanishes_on_line_helper (P : PolyR3) (l : Line3) (S : Finset Point3)
     (h_roots : ∀ p ∈ S, evalP P p = 0)
     (h_deg : (MvPolynomial.totalDegree P : ℝ) < S.card) :
     evalPLine P l = 0 := by
-    -- Step 1: For each p ∈ S, choose a parameter t_p such that p = l.base + t_p • l.dir
-    -- Step 2: evalPLine P l is a univariate polynomial of degree ≤ totalDegree P
-    -- Step 3: It has |S| roots (at the t_p values), and |S| > degree
-    -- Step 4: By Polynomial.eq_zero_of_degree_lt_of_eval_finset_eq_zero, it must be 0
-    --
-    -- The main difficulty is constructing the finset of parameter values and showing
-    -- they are distinct. We need injectivity of the parameterization on S.
-    -- Since points on a line are determined by their parameter, distinct points
-    -- give distinct parameters. This requires l.dir ≠ 0.
-    sorry
+  -- Step 1: For each p ∈ S, choose a parameter t_p such that p = l.base + t_p • l.dir
+  have h_exists_t : ∀ p ∈ S, ∃ t : ℝ, p = l.base + t • l.dir := h_subset
+  let t (p : Point3) (hp : p ∈ S) : ℝ := Classical.choose (h_exists_t p hp)
+  have ht (p : Point3) (hp : p ∈ S) : p = l.base + (t p hp) • l.dir :=
+    Classical.choose_spec (h_exists_t p hp)
+  -- The set of parameters
+  let T : Finset ℝ := S.attach.image (fun p => t p.1 p.2)
+  -- Step 2: evalPLine P l is a univariate polynomial of degree ≤ totalDegree P
+  have h_deg_poly : (evalPLine P l).degree ≤ (MvPolynomial.totalDegree P : ℕ) :=
+    evalPLine_degree_le P l
+  -- Step 3: It has |S| roots (at the t_p values), and |S| > degree
+  have h_roots_T : ∀ t_val ∈ T, (evalPLine P l).eval t_val = 0 := by
+    intro t_val ht_val
+    simp only [Finset.mem_image, Finset.mem_attach, true_and, Subtype.exists, T] at ht_val
+    rcases ht_val with ⟨p, hp_mem, rfl⟩
+    rw [evalPLine_eval_eq, ← ht p hp_mem]
+    exact h_roots p hp_mem
+  have h_card_T : T.card = S.card := by
+    rw [Finset.card_image_of_injOn]
+    · rw [Finset.card_attach]
+    · intro p1 _ p2 _ h_eq
+      simp only at h_eq
+      ext
+      rw [ht p1.1 p1.2, ht p2.1 p2.2, h_eq]
+  -- |S| > degree
+  have h_deg_lt : (evalPLine P l).degree < (T.card : ℕ) := by
+    rw [h_card_T]
+    have h_deg_N : MvPolynomial.totalDegree P < S.card := by
+      exact_mod_cast h_deg
+    exact h_deg_poly.trans_lt (Nat.cast_lt.mpr h_deg_N)
+  -- Step 4: By Polynomial.eq_zero_of_degree_lt_of_eval_finset_eq_zero, it must be 0
+  exact Polynomial.eq_zero_of_degree_lt_of_eval_finset_eq_zero T h_deg_lt h_roots_T
 
 lemma evalPLine_zero_implies_eval_zero (P : PolyR3) (l : Line3)
     (h_zero : evalPLine P l = 0) (p : Point3) (hp : l.contains p) :
