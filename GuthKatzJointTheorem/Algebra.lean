@@ -324,7 +324,37 @@ lemma evalPLine_eval_eq (P : PolyR3) (l : Line3) (t : ℝ) :
 
 -- The degree of evalPLine P l is at most the total degree of P.
 lemma evalPLine_degree_le (P : PolyR3) (l : Line3) :
-    (evalPLine P l).degree ≤ MvPolynomial.totalDegree P := by sorry
+    (evalPLine P l).degree ≤ MvPolynomial.totalDegree P := by
+  unfold evalPLine
+  rw [MvPolynomial.eval₂_eq]
+  refine (Polynomial.degree_sum_le _ _).trans ?_
+  simp only [Finset.sup_le_iff]
+  intro m hm
+  -- degree of monomial part
+  have hX : ∀ i, (Polynomial.C (l.base i) + Polynomial.X * Polynomial.C (l.dir i)).degree ≤ 1 :=
+    fun i => by
+      refine (Polynomial.degree_add_le _ _).trans (max_le (Polynomial.degree_C_le.trans ?_) ?_)
+      · exact_mod_cast Nat.zero_le 1
+      · refine (Polynomial.degree_mul_le _ _).trans ?_
+        rw [Polynomial.degree_X]
+        exact (add_le_add_right (Polynomial.degree_C_le (a := l.dir i)) 1).trans
+          (by exact_mod_cast le_refl _)
+  refine (Polynomial.degree_mul_le _ _).trans ?_
+  have h_deg_C : (Polynomial.C (MvPolynomial.coeff m P)).degree ≤ 0 := Polynomial.degree_C_le
+  refine (add_le_add h_deg_C le_rfl).trans ?_
+  rw [zero_add]
+  refine (Polynomial.degree_prod_le _ _).trans ?_
+  have h1 : ∑ i ∈ m.support,
+      ((Polynomial.C (l.base i) + Polynomial.X * Polynomial.C (l.dir i)) ^ m i).degree ≤
+      ∑ i ∈ m.support, (m i : WithBot ℕ) :=
+    Finset.sum_le_sum fun i _ => (Polynomial.degree_pow_le _ _).trans (by
+      have h : (Polynomial.C (l.base i) + Polynomial.X * Polynomial.C (l.dir i)).degree ≤
+        (1 : WithBot ℕ) := hX i
+      exact (nsmul_le_nsmul_right h (m i)).trans (by simp))
+  have h2 : ∑ i ∈ m.support, (m i : WithBot ℕ) ≤ ↑(MvPolynomial.totalDegree P) := by
+    rw [← Nat.cast_sum]
+    exact Nat.cast_le.mpr (MvPolynomial.le_totalDegree hm)
+  exact h1.trans h2
 
 lemma poly_vanishes_on_line_helper (P : PolyR3) (l : Line3) (S : Finset Point3)
     (h_subset : ∀ p ∈ S, l.contains p)
