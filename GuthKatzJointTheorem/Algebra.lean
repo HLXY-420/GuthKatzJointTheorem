@@ -308,7 +308,19 @@ theorem exists_min_degree_poly (S : Finset Point3) (hS : S.Nonempty) :
 -- at the parameter t gives the same result as evaluating the multivariate
 -- polynomial at the point on the line.
 lemma evalPLine_eval_eq (P : PolyR3) (l : Line3) (t : ℝ) :
-    Polynomial.eval t (evalPLine P l) = evalP P (l.base + t • l.dir) := by sorry
+    Polynomial.eval t (evalPLine P l) = evalP P (l.base + t • l.dir) := by
+  unfold evalPLine evalP
+  induction P using MvPolynomial.induction_on
+  case C r =>
+    simp [MvPolynomial.eval₂_C, MvPolynomial.eval_C, Polynomial.eval_C]
+  case add P Q hP hQ =>
+    rw [MvPolynomial.eval₂_add, Polynomial.eval_add, hP, hQ, MvPolynomial.eval_add]
+  case mul_X P i hP =>
+    rw [MvPolynomial.eval₂_mul, Polynomial.eval_mul, hP, MvPolynomial.eval₂_X,
+        MvPolynomial.eval_mul, MvPolynomial.eval_X]
+    congr 1
+    simp [Polynomial.eval_add, Polynomial.eval_mul, Polynomial.eval_C, Polynomial.eval_X]
+    ring
 
 -- The degree of evalPLine P l is at most the total degree of P.
 lemma evalPLine_degree_le (P : PolyR3) (l : Line3) :
