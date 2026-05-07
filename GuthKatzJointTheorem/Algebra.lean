@@ -437,38 +437,60 @@ theorem poly_vanishes_on_line (P : PolyR3) (l : Line3) (S : Finset Point3)
 lemma evalPLine_derivative (P : PolyR3) (l : Line3) :
     Polynomial.derivative (evalPLine P l) =
     ∑ i : Fin 3, Polynomial.C (l.dir i) * evalPLine (PDeriv3 P i) l := by
-  unfold evalPLine PDeriv3
   induction P using MvPolynomial.induction_on
   case C r =>
-    simp only [MvPolynomial.eval₂_C, Polynomial.derivative_C, MvPolynomial.pderiv_C,
-      MvPolynomial.eval₂_zero, mul_zero, Finset.sum_const_zero]
+    simp only [evalPLine, MvPolynomial.eval₂_C, Polynomial.derivative_C, PDeriv3,
+      MvPolynomial.pderiv_C, MvPolynomial.eval₂_zero, mul_zero, Finset.sum_const_zero]
   case add P Q hP hQ =>
-    simp only [MvPolynomial.eval₂_add, map_add, hP, hQ, Finset.sum_add_distrib, mul_add]
+    simp only [evalPLine, PDeriv3] at *
+    rw [MvPolynomial.eval₂_add, Polynomial.derivative_add, hP, hQ, ← Finset.sum_add_distrib]
+    apply Finset.sum_congr rfl
+    intro j _
+    rw [map_add, MvPolynomial.eval₂_add, mul_add]
   case mul_X P i hP =>
-    simp only [MvPolynomial.eval₂_mul, MvPolynomial.eval₂_X, MvPolynomial.pderiv_mul,
-      MvPolynomial.pderiv_X, MvPolynomial.eval₂_add]
-    rw [Polynomial.derivative_mul, hP]
-    simp only [Polynomial.derivative_add, Polynomial.derivative_C, Polynomial.derivative_X,
-      Polynomial.derivative_mul, mul_add, Finset.sum_mul, mul_assoc, zero_add, add_zero,
-      mul_zero]
-    simp only [Finset.sum_add_distrib]
-    rw [add_comm]
-    congr 1
-    · rw [Finset.sum_eq_single i]
-      · simp
-        ring_nf
-        sorry
-      · intro j _ hne
-        simp
-        ring_nf
-        sorry
-      · intro hi; simp at hi
-    · rw [← Finset.sum_add_distrib]
+    simp only [evalPLine, PDeriv3] at *
+    rw [MvPolynomial.eval₂_mul, MvPolynomial.eval₂_X, Polynomial.derivative_mul, hP]
+    have h_deriv : Polynomial.derivative (Polynomial.C (l.base i) +
+      Polynomial.X * Polynomial.C (l.dir i)) = Polynomial.C (l.dir i) := by
+      simp [Polynomial.derivative_add, Polynomial.derivative_C, Polynomial.derivative_mul,
+        Polynomial.derivative_X]
+    rw [h_deriv, Finset.sum_mul]
+    have h_RHS : ∑ x : Fin 3, Polynomial.C (l.dir x) *
+        MvPolynomial.eval₂ Polynomial.C (fun k ↦ Polynomial.C (l.base k) +
+          Polynomial.X * Polynomial.C (l.dir k)) (MvPolynomial.pderiv x (P * MvPolynomial.X i)) =
+      ∑ x : Fin 3, (Polynomial.C (l.dir x) *
+        MvPolynomial.eval₂ Polynomial.C (fun k ↦ Polynomial.C (l.base k) +
+          Polynomial.X * Polynomial.C (l.dir k)) (MvPolynomial.pderiv x P) *
+        (Polynomial.C (l.base i) + Polynomial.X * Polynomial.C (l.dir i)) +
+        Polynomial.C (l.dir x) * MvPolynomial.eval₂ Polynomial.C (fun k ↦ Polynomial.C (l.base k) +
+          Polynomial.X * Polynomial.C (l.dir k)) P *
+        MvPolynomial.eval₂ Polynomial.C (fun k ↦ Polynomial.C (l.base k) +
+          Polynomial.X * Polynomial.C (l.dir k)) (MvPolynomial.pderiv x (MvPolynomial.X i))) := by
       apply Finset.sum_congr rfl
       intro j _
-      ring_nf
-      sorry
-
+      simp only [MvPolynomial.pderiv_mul, MvPolynomial.eval₂_add, MvPolynomial.eval₂_mul,
+        MvPolynomial.eval₂_X]
+      ring
+    rw [h_RHS, Finset.sum_add_distrib]
+    apply congr (congr_arg Add.add rfl)
+    have h_deriv_X : ∀ x : Fin 3, MvPolynomial.eval₂ Polynomial.C (fun k ↦ Polynomial.C (l.base k) +
+        Polynomial.X * Polynomial.C (l.dir k)) (MvPolynomial.pderiv x (MvPolynomial.X i)) =
+        if x = i then 1 else 0 := by
+      intro x
+      rw [MvPolynomial.pderiv_X]
+      split_ifs with h_eq
+      · subst h_eq
+        simp
+      · simp [h_eq]
+    simp_rw [h_deriv_X]
+    rw [Finset.sum_eq_single i]
+    · simp
+      ring
+    · intro j _ hj
+      rw [if_neg hj]
+      ring
+    · intro hi
+      simp at hi
 
 lemma dir_deriv_vanishes_on_line (P : PolyR3) (l : Line3) (p : Point3)
     (h_vanish : evalPLine P l = 0) (hp : l.contains p) :
@@ -484,7 +506,19 @@ lemma dir_deriv_vanishes_on_line (P : PolyR3) (l : Line3) (p : Point3)
     intro i
     exact evalPLine_eval_eq (PDeriv3 P i) l t0
   simp_rw [← h_compat]
-  sorry
+  have h_eval2 : (Polynomial.evalRingHom t0) (∑ i : Fin 3, Polynomial.C (l.dir i) *
+    evalPLine (PDeriv3 P i) l) = 0 := h_eval
+  rw [map_sum] at h_eval2
+  have h_eval_sum :
+      (∑ x : Fin 3, l.dir x * Polynomial.eval t0 (evalPLine (PDeriv3 P x) l)) = 0 := by
+    calc (∑ x : Fin 3, l.dir x * Polynomial.eval t0 (evalPLine (PDeriv3 P x) l))
+      _ = ∑ x : Fin 3, Polynomial.eval t0 (Polynomial.C (l.dir x) *
+            evalPLine (PDeriv3 P x) l) := by
+        apply Finset.sum_congr rfl
+        intro j _
+        rw [Polynomial.eval_mul, Polynomial.eval_C]
+      _ = 0 := h_eval2
+  exact h_eval_sum
 
 
 
