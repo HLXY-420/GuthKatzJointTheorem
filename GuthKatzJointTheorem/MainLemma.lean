@@ -6,16 +6,126 @@ import GuthKatzJointTheorem.Algebra
 set_option linter.style.openClassical false
 
 open Classical
+open MvPolynomial
+lemma coeff_pderiv (P : PolyR3) (i : Fin 3) (m : Fin 3 →₀ ℕ) :
+    coeff m (pderiv i P) = coeff (m + Finsupp.single i 1) P * (m i + 1) := by
+  induction P using MvPolynomial.induction_on'
+  case add P Q hP hQ =>
+    rw [map_add, MvPolynomial.coeff_add, MvPolynomial.coeff_add, hP, hQ]
+    ring
+  case monomial m' c =>
+    rw [pderiv_monomial, coeff_monomial, coeff_monomial]
+    by_cases h_eq : m + Finsupp.single i 1 = m'
+    · subst h_eq
+      have h1 : m + Finsupp.single i 1 - Finsupp.single i 1 = m := by
+        ext j
+        by_cases h : j = i
+        · subst h
+          simp
+        · simp
+      simp [h1]
+    · have h_eq' : m' ≠ m + Finsupp.single i 1 := Ne.symm h_eq
+      by_cases h1 : m' - Finsupp.single i 1 = m
+      · subst h1
+        have h_zero : m' i = 0 := by
+          by_contra hc
+          have hc' : 0 < m' i := Nat.pos_of_ne_zero hc
+          have h2 : m' - Finsupp.single i 1 + Finsupp.single i 1 = m' := by
+            ext j
+            by_cases h : j = i
+            · subst h
+              simp only [Finsupp.coe_add, Finsupp.coe_tsub]
+              simp only [Pi.add_apply, Pi.sub_apply, Finsupp.single_eq_same]
+              exact Nat.sub_add_cancel hc'
+            · simp [h]
+          exact h_eq h2
+        simp [h_zero, h_eq']
+      · simp [h1, h_eq']
 
 -- Fact: the degree of a partial derivative is strictly less than the degree of the polynomial.
 lemma pderiv_degree_lt (P : PolyR3) (i : Fin 3) (hP : PDeriv3 P i ≠ 0) :
     MvPolynomial.totalDegree (PDeriv3 P i) < MvPolynomial.totalDegree P := by
-    sorry
+  have h_exists : ∃ m ∈ (PDeriv3 P i).support, m.sum (fun _ e => e) =
+      (PDeriv3 P i).totalDegree := by
+    have h_nonempty : (PDeriv3 P i).support.Nonempty := by
+      exact Finsupp.support_nonempty_iff.mpr hP
+    have h_ex := Finset.exists_mem_eq_sup _ h_nonempty (fun m : Fin 3 →₀ ℕ => m.sum (fun _ e => e))
+    rcases h_ex with ⟨m, hm, h_eq⟩
+    use m
+    exact ⟨hm, h_eq.symm⟩
+  rcases h_exists with ⟨m, hm_supp, hm_deg⟩
+  have h_coeff : coeff m (PDeriv3 P i) ≠ 0 := Finsupp.mem_support_iff.mp hm_supp
+  have h_coeff_pderiv := coeff_pderiv P i m
+  change coeff m (pderiv i P) = _ at h_coeff_pderiv
+  change coeff m (pderiv i P) ≠ 0 at h_coeff
+  rw [h_coeff_pderiv] at h_coeff
+  have h_coeff_P : coeff (m + Finsupp.single i 1) P ≠ 0 := by
+    intro hc
+    rw [hc] at h_coeff
+    simp at h_coeff
+  have h_supp_P : m + Finsupp.single i 1 ∈ P.support := Finsupp.mem_support_iff.mpr h_coeff_P
+  have h_deg_P : (m + Finsupp.single i 1).sum (fun _ e => e) ≤ P.totalDegree := by
+    exact Finset.le_sup (f := fun (m : Fin 3 →₀ ℕ) => m.sum (fun _ e => e)) h_supp_P
+  have h_sum_add : (m + Finsupp.single i 1).sum (fun _ e => e) = m.sum (fun _ e => e) + 1 := by
+    rw [Finsupp.sum_add_index]
+    · simp
+    · intro _ _
+      rfl
+    · intro _ _ _ _
+      rfl
+  rw [h_sum_add, hm_deg] at h_deg_P
+  exact Nat.lt_of_succ_le h_deg_P
 
 -- Fact: if all partial derivatives of a polynomial are zero, then the polynomial is a constant.
 lemma pderiv_zero_implies_const (P : PolyR3) (h : ∀ i : Fin 3, PDeriv3 P i = 0) :
     ∃ c : ℝ, P = MvPolynomial.C c := by
-    sorry
+  use coeff 0 P
+  ext m
+  by_cases h0 : m = 0
+  · subst h0
+    simp
+  · have h_exists : ∃ i : Fin 3, 0 < m i := by
+      by_contra hc
+      push_neg at hc
+      have h_zero : m = 0 := by
+        ext i
+        exact Nat.eq_zero_of_le_zero (hc i)
+      exact h0 h_zero
+    rcases h_exists with ⟨i, hi⟩
+    have h_eval := coeff_pderiv P i (m - Finsupp.single i 1)
+    have h_zero := h i
+    change pderiv i P = 0 at h_zero
+    rw [h_zero] at h_eval
+    rw [coeff_zero] at h_eval
+    have h_rebuild : m - Finsupp.single i 1 + Finsupp.single i 1 = m := by
+      ext j
+      by_cases h_eq : j = i
+      · subst h_eq
+        simp only [Finsupp.coe_add, Finsupp.coe_tsub, Pi.add_apply, Pi.sub_apply]
+        simp only [Finsupp.single_eq_same]
+        exact Nat.sub_add_cancel hi
+      · simp [h_eq]
+    rw [h_rebuild] at h_eval
+    have h_eq_zero : coeff m P * (m i) = 0 := by
+      revert h_eval
+      simp only [Finsupp.coe_tsub, Pi.sub_apply, Finsupp.single_eq_same]
+      intro h_eval
+      have h_sub : ((m i - 1 : ℕ) : ℝ) + 1 = m i := by
+        rw [Nat.cast_sub hi]
+        have : m i - 1 + 1 = m i := Nat.sub_add_cancel hi
+        simp
+      rw [h_sub] at h_eval
+      exact h_eval.symm
+    have hm_i_pos : (m i : ℝ) ≠ 0 := by
+      exact Nat.cast_ne_zero.mpr (ne_of_gt hi)
+    cases mul_eq_zero.mp h_eq_zero with
+    | inl hP =>
+      rw [coeff_C]
+      rw [if_neg (Ne.symm h0)]
+      exact hP
+    | inr hm =>
+      exfalso
+      exact hm_i_pos hm
 
 -- The core contradiction: At least one line must have relatively few joints.
 theorem exists_sparse_line (L : Finset Line3) (hL : L.Nonempty) (hJ : (Joints L).Nonempty) :
