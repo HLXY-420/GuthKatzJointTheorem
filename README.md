@@ -7,11 +7,11 @@ This repository contains a complete formalization of the **Joints Conjecture** i
 
 The theorem states that any set of $L$ lines in $\mathbb{R}^3$ determines at most $O(|L|^{3/2})$ joints. A "joint" is defined as a point where at least three non-coplanar lines intersect. 
 
-Originally posed by Chazelle, Edelsbrunner, Guibas, Pollack, Seidel, Sharir, and Snoeyink in 1992, the conjecture was first proven by Guth and Katz in 2008 using algebraic geometry. This formalization utilizes the highly streamlined "Polynomial Method" proof discovered independently by Elekes, Kaplan, Sharir, and Quilodrán in 2009, as presented in Chapter 3 of Larry Guth's book *Polynomial Methods in Combinatorics*.
+Originally posed by Chazelle, Edelsbrunner, Guibas, Pollack, Seidel, Sharir, and Snoeyink in 1992, the conjecture was first proven by Guth and Katz in 2008 using algebraic geometry. This formalization follows the simplified proof in Larry Guth's book *Polynomial Methods in Combinatorics* (Chapter 3).
 
 ## The Mathematical Proof
 
-The formalized proof completely avoids complex algebraic geometry (like irreducible factorizations or Bézout's theorem) and relies on a brilliant combination of linear algebra and multivariable calculus:
+The proof completely avoids complex algebraic geometry (like irreducible factorizations or Bézout's theorem) and relies on a brilliant combination of linear algebra and multivariable calculus:
 
 1. **The Minimal Degree Polynomial:** If the set of joints $J$ is non-empty, parameter counting guarantees the existence of a non-zero trivariate polynomial $P$ vanishing on all joints, with a degree bounded by $3|J|^{1/3}$. We choose $P$ to be of *minimal* degree.
 2. **The Sparse Line Lemma:** We prove by contradiction that there must exist at least one line containing $\le 3|J|^{1/3}$ joints. If all lines contained more joints than the degree of $P$, $P$ would vanish entirely on every line. Consequently, its gradient $\nabla P$ would vanish at every joint. Since the partial derivatives of $P$ have strictly lower degrees, this contradicts the minimality of $P$'s degree.
