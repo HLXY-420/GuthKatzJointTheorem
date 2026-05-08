@@ -1,3 +1,9 @@
+/-
+Copyright (c) 2026 Yuchen Liu. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Yuchen Liu
+-/
+
 import Mathlib.Algebra.MvPolynomial.Basic
 import Mathlib.Data.Sym.Card
 import Mathlib.Algebra.MvPolynomial.PDeriv

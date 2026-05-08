@@ -1,3 +1,9 @@
+/-
+Copyright (c) 2026 Yuchen Liu. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Yuchen Liu
+-/
+
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
 
 import GuthKatzJointTheorem.Geometry
@@ -112,7 +118,6 @@ lemma pderiv_zero_implies_const (P : PolyR3) (h : ∀ i : Fin 3, PDeriv3 P i = 0
       intro h_eval
       have h_sub : ((m i - 1 : ℕ) : ℝ) + 1 = m i := by
         rw [Nat.cast_sub hi]
-        have : m i - 1 + 1 = m i := Nat.sub_add_cancel hi
         simp
       rw [h_sub] at h_eval
       exact h_eval.symm

@@ -1,3 +1,9 @@
+/-
+Copyright (c) 2026 Yuchen Liu. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Yuchen Liu
+-/
+
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
 
 import GuthKatzJointTheorem.Geometry
@@ -19,7 +25,29 @@ so that the **structure** of the two main proofs is fully explicit.
 -- Joints is monotone: removing lines can only lose joints
 -- I think this can be proven by just a few lines of calculation.
 lemma joints_mono_erase (L : Finset Line3) (l₀ : Line3) :
-    Joints (L.erase l₀) ⊆ Joints L := sorry
+    Joints (L.erase l₀) ⊆ Joints L := by
+  intro p hp
+  rw [Joints, Finset.mem_filter] at hp ⊢
+  rcases hp with ⟨h_mem, h_joint⟩
+  constructor
+  · -- Prove p is in the biUnion for L
+    simp only [Finset.mem_biUnion, Finset.mem_product, Prod.exists] at h_mem ⊢
+    rcases h_mem with ⟨l₁, l₂, ⟨hl₁, hl₂⟩, h_pt⟩
+    use l₁, l₂
+    constructor
+    · constructor
+      · exact Finset.mem_of_mem_erase hl₁
+      · exact Finset.mem_of_mem_erase hl₂
+    · exact h_pt
+  · -- Prove IsJoint p L
+    rcases h_joint with ⟨l₁, l₂, l₃, hl₁, hl₂, hl₃, h_distinct₁, h_distinct₂, h_distinct₃,
+      h_p₁, h_p₂, h_p₃, h_coplanar⟩
+    use l₁, l₂, l₃
+    refine ⟨?_, ?_, ?_, h_distinct₁, h_distinct₂, h_distinct₃, h_p₁, h_p₂, h_p₃, h_coplanar⟩
+    · exact Finset.mem_of_mem_erase hl₁
+    · exact Finset.mem_of_mem_erase hl₂
+    · exact Finset.mem_of_mem_erase hl₃
+
 
 -- The number of joints on a single line is bounded by the sparse-line certificate
 -- (this is the "telescoping" step:  |Joints L \ Joints (L \ {l₀})| ≤ sparse bound)
@@ -28,7 +56,88 @@ lemma joints_diff_le_sparse (L : Finset Line3) (l₀ : Line3) (hl₀ : l₀ ∈ 
     (h_sparse : ((Joints L).filter (fun p => l₀.contains p)).card
         ≤ 3 * ((Joints L).card : ℝ) ^ (1 / 3 : ℝ)) :
     ((Joints L).card : ℝ) ≤
-      ((Joints (L.erase l₀)).card : ℝ) + 3 * ((Joints L).card : ℝ) ^ (1/3 : ℝ) := sorry
+      ((Joints (L.erase l₀)).card : ℝ) + 3 * ((Joints L).card : ℝ) ^ (1/3 : ℝ) := by
+  have h_mono := joints_mono_erase L l₀
+  have h_subset : Joints L \ Joints (L.erase l₀) ⊆ (Joints L).filter (fun p => l₀.contains p) := by
+    intro p hp
+    rw [Finset.mem_sdiff] at hp
+    rcases hp with ⟨hp_L, hp_not_L_erase⟩
+    rw [Finset.mem_filter]
+    constructor
+    · exact hp_L
+    · -- Contradiction: if l₀ does not contain p, then p must be a joint of L.erase l₀
+      by_contra h_not_contains
+      apply hp_not_L_erase
+      rw [Joints, Finset.mem_filter] at hp_L ⊢
+      constructor
+      · -- p in biUnion of L.erase l₀
+        have hp_bi := hp_L.1
+        rw [Finset.mem_biUnion] at hp_bi
+        rcases hp_bi with ⟨⟨l₁, l₂⟩, h_l12, h_pt⟩
+        rw [Finset.mem_product] at h_l12
+        rcases h_l12 with ⟨hl₁, hl₂⟩
+        dsimp at h_pt
+        -- Since l₁.contains p and l₂.contains p (implicit in h_pt), and ¬ l₀.contains p:
+        -- we must have l₁ ≠ l₀ and l₂ ≠ l₀.
+        -- First, extract l₁.contains p and l₂.contains p from h_pt.
+        have h_exists : ∃ p', l₁.contains p' ∧ l₂.contains p' ∧ l₁ ≠ l₂ := by
+          split_ifs at h_pt
+          · assumption
+          · contradiction
+        have hp_eq : p = Classical.choose h_exists := by
+          split_ifs at h_pt
+          · exact Finset.mem_singleton.mp h_pt
+          · contradiction
+        have h_p_in_l₁ : l₁.contains p := by
+          rw [hp_eq]; exact (Classical.choose_spec h_exists).1
+        have h_p_in_l₂ : l₂.contains p := by
+          rw [hp_eq]; exact (Classical.choose_spec h_exists).2.1
+        -- Now we can say l₁ ≠ l₀ and l₂ ≠ l₀
+        have hl₁_erase : l₁ ∈ L.erase l₀ := Finset.mem_erase.mpr
+          ⟨fun h => h_not_contains (h ▸ h_p_in_l₁), hl₁⟩
+        have hl₂_erase : l₂ ∈ L.erase l₀ := Finset.mem_erase.mpr
+          ⟨fun h => h_not_contains (h ▸ h_p_in_l₂), hl₂⟩
+        apply Finset.mem_biUnion.mpr
+        use ⟨l₁, l₂⟩
+        constructor
+        · rw [Finset.mem_product]; exact ⟨hl₁_erase, hl₂_erase⟩
+        · dsimp
+          rw [hp_eq]
+          split_ifs with h'
+          · exact Finset.mem_singleton.mpr rfl
+          · -- h' is the same as h_exists, but for L.erase l₀.
+            -- But the condition only depends on l₁, l₂, which are in L.erase l₀.
+            exfalso; apply h'; exact h_exists
+      · -- IsJoint p (L.erase l₀)
+        rcases hp_L.2 with ⟨l₁, l₂, l₃, hl₁, hl₂, hl₃, h_dist₁, h_dist₂, h_dist₃,
+          h_p₁, h_p₂, h_p₃, h_coplanar⟩
+        use l₁, l₂, l₃
+        have h_l₁ : l₁ ≠ l₀ := fun h => h_not_contains (h ▸ h_p₁)
+        have h_l₂ : l₂ ≠ l₀ := fun h => h_not_contains (h ▸ h_p₂)
+        have h_l₃ : l₃ ≠ l₀ := fun h => h_not_contains (h ▸ h_p₃)
+        refine ⟨?_, ?_, ?_, h_dist₁, h_dist₂, h_dist₃, h_p₁, h_p₂, h_p₃, h_coplanar⟩
+        · rw [Finset.mem_erase]; exact ⟨h_l₁, hl₁⟩
+        · rw [Finset.mem_erase]; exact ⟨h_l₂, hl₂⟩
+        · rw [Finset.mem_erase]; exact ⟨h_l₃, hl₃⟩
+
+  -- Now finish the cardinality inequality
+  have h_card := Finset.card_le_card h_subset
+  have h_card_real : (Joints L).card = (Joints (L.erase l₀)).card
+    + (Joints L \ Joints (L.erase l₀)).card := by
+    rw [← Finset.card_sdiff_add_card_inter (Joints L) (Joints (L.erase l₀)),
+      Finset.inter_eq_right.mpr h_mono, add_comm]
+  push_cast at h_card ⊢
+  calc ((Joints L).card : ℝ)
+    _ = ((Joints (L.erase l₀)).card : ℝ) + ((Joints L \ Joints (L.erase l₀)).card : ℝ) := by
+        rw [← Nat.cast_add, ← h_card_real]
+    _ ≤ ((Joints (L.erase l₀)).card : ℝ) + (((Joints L).filter
+      (fun p => l₀.contains p)).card : ℝ) := by
+        gcongr
+    _ ≤ ((Joints (L.erase l₀)).card : ℝ) + 3 * ((Joints L).card : ℝ) ^ (1/3 : ℝ) := by
+        gcongr
+
+
+
 
 -- Card of erase: |L.erase l₀| = |L| - 1  when l₀ ∈ L  (cast to ℝ)
 lemma card_erase_cast (L : Finset Line3) (l₀ : Line3) (hl₀ : l₀ ∈ L) :
@@ -154,13 +263,27 @@ The key algebraic steps are:
 -- I think this can be proven by just a few lines of calculation.
 lemma rpow_div_bound {J a : ℝ} (hJ_pos : 0 < J)
     (h : J ≤ a * J ^ (1 / 3 : ℝ)) :
-    J ^ (2 / 3 : ℝ) ≤ a := sorry
+    J ^ (2 / 3 : ℝ) ≤ a := by
+  have hJ_rpow_pos : 0 < J ^ (1 / 3 : ℝ) := Real.rpow_pos_of_pos hJ_pos (1 / 3)
+  have h_div := (div_le_iff₀ hJ_rpow_pos).mpr h
+  nth_rw 1 [← Real.rpow_one J] at h_div
+  rw [← Real.rpow_sub hJ_pos] at h_div
+  norm_num at h_div
+  exact h_div
+
 
 -- Raising to the 3/2 power:  J^(2/3) ≤ a  implies J ≤ a^(3/2)  when J > 0 and a ≥ 0
 -- I think this can be proven by just a few lines of calculation.
-lemma rpow_raise_bound {J a : ℝ} (hJ_pos : 0 < J) (ha : 0 ≤ a)
+lemma rpow_raise_bound {J a : ℝ} (hJ_pos : 0 < J) (_ha : 0 ≤ a)
     (h : J ^ (2 / 3 : ℝ) ≤ a) :
-    J ≤ a ^ (3 / 2 : ℝ) := sorry
+    J ≤ a ^ (3 / 2 : ℝ) := by
+  have h_base_nonneg : 0 ≤ J ^ (2 / 3 : ℝ) := Real.rpow_nonneg (le_of_lt hJ_pos) (2/3)
+  have h_exp_nonneg : 0 ≤ (3 / 2 : ℝ) := by norm_num
+  have h_raise := Real.rpow_le_rpow h_base_nonneg h h_exp_nonneg
+  rw [← Real.rpow_mul (le_of_lt hJ_pos)] at h_raise
+  norm_num at h_raise
+  on_goal 1 => exact h_raise
+
 
 -- mul_rpow for the final step: (3 * |L|)^(3/2) = 3^(3/2) * |L|^(3/2)
 lemma mul_rpow_split (a b : ℝ) (r : ℝ) (ha : 0 ≤ a) (hb : 0 ≤ b) :
